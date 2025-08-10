@@ -20,12 +20,18 @@ jobs:
 
     - name: Convert all MP4 to VP9 (overwrite)
       run: |
-        for file in video/*.mp4; do
-          echo "Converting $file to VP9..."
-          tmpfile="${file%.mp4}_tmp.mp4"
-          ffmpeg -y -i "$file" -c:v libvpx-vp9 -b:v 0 -crf 30 -c:a libopus "$tmpfile"
-          mv "$tmpfile" "$file"
-        done
+          for file in $(find video -type f -name "*.mp4"); do
+            echo "Checking $file"
+            codec=$(ffprobe -v error -select_streams v:0 -show_entries stream=codec_name \
+                      -of default=noprint_wrappers=1:nokey=1 "$file")
+            if [ "$codec" = "vp9" ]; then
+              echo "  Already VP9, skipping."
+              continue
+            fi
+            echo "  Converting..."
+            ffmpeg -y -i "$file" -c:v libvpx-vp9 -b:v 0 -crf 30 -c:a aac -b:a 128k -movflags +faststart "${file%.mp4}_tmp.mp4"
+            mv "${file%.mp4}_tmp.mp4" "$file"
+          done
 
     - name: Commit and push changes
       run: |
