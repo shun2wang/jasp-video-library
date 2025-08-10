@@ -1,0 +1,36 @@
+name: Convert to VP9 encode
+
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+    paths:
+      - "video/**/*.mp4"
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Install ffmpeg
+      run: sudo apt update && sudo apt install -y ffmpeg
+
+    - name: Convert all MP4 to VP9 (overwrite)
+      run: |
+        for file in video/*.mp4; do
+          echo "Converting $file to VP9..."
+          tmpfile="${file%.mp4}_tmp.mp4"
+          ffmpeg -y -i "$file" -c:v libvpx-vp9 -b:v 0 -crf 30 -c:a libopus "$tmpfile"
+          mv "$tmpfile" "$file"
+        done
+
+    - name: Commit and push changes
+      run: |
+        git config --global user.name "GitHub Actions"
+        git config --global user.email "actions@github.com"
+        git add video/*.mp4
+        git commit -m "Convert MP4 videos to VP9 format"
+        git push
